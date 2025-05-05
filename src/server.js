@@ -30,12 +30,20 @@ app.get('/', (req, res) => {
 // Create a Stripe checkout session
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
-    const { priceId, productName, productDescription } = req.body;
+    const { priceId, productName, productDescription, mode } = req.body;
+
+    console.log('Stripe Secret Key (first 10):', process.env.STRIPE_SECRET_KEY.slice(0, 10));
+    console.log('Price ID received:', priceId);
+    console.log('Stripe Account Mode:', process.env.STRIPE_SECRET_KEY.startsWith('sk_live_') ? 'LIVE' : 'TEST');
+    console.log('Checkout mode:', mode);
 
     // Validate required fields
     if (!priceId) {
       return res.status(400).json({ error: 'Price ID is required' });
     }
+
+    // Default to 'payment' if mode is not provided
+    const checkoutMode = mode === 'subscription' ? 'subscription' : 'payment';
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
@@ -46,7 +54,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
           quantity: 1,
         }
       ],
-      mode: 'payment',
+      mode: checkoutMode,
       success_url: `${process.env.CLIENT_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.CLIENT_URL}/pricing`,
       metadata: {
